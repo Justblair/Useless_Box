@@ -13,7 +13,6 @@
 //#define mqtt_user ""
 //#define mqtt_password ""
 
-
 enum characters {A,r,d,u,i,n,o};
 
 /*
@@ -34,6 +33,10 @@ uint32_t buf[16];
 WiFiClient espClient;
 PubSubClient client(espClient);
 
+const int motorAPWM = 15;
+const int motorB    = 11;
+const int switchPin = 9;
+
 
 void setup() {
   Serial.begin(9600);
@@ -42,6 +45,16 @@ void setup() {
   setup_wifi();
   client.setServer(mqtt_server, 1883);
   client.setCallback(callback);
+  pinMode (motorAPWM, OUTPUT);
+  pinMode (motorB, OUTPUT);
+  pinMode (switchPin, INPUT_PULLUP);
+  attachInterrupt (switchPin, switchChange, CHANGE);
+}
+
+
+void switchChange(){
+  // do switchy stuff here
+  
 }
 
 void loop() {
