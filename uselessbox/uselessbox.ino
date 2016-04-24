@@ -18,9 +18,9 @@ enum characters { A, r, d, u, i, n, o };
 /*
  Now we need a LedControl to work with.
  ***** These pin numbers will probably not work with your hardware *****
- pin 13 is connected to the DataIn
- pin 14 is connected to the CLK
- pin 12 is connected to LOAD
+ pin 13 (D7 on Wemos) (yellow wire)	is connected to the DataIn 
+ pin 14 (D5 on Wemos) (green wire)	is connected to the CLK
+ pin 12 (D6 on Wemos) (orange wire)	is connected to LOAD
  We have 6 MAX72XX.
  */
 
