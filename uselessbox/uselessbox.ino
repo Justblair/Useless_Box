@@ -62,34 +62,44 @@ void loop() {
 		reconnect();
 	}
 	client.loop();
-	writeScreen();
-	delay(delaytime);
-	for (int i = 0; i < 24; i++) {
-		char ci[2];
-		memset(buf, 0x0, 64);
-		putSprite(i, 9, 4, 5, A);
-		itoa(i, ci, 10);
-		putChar(i, 0, ci[0]);
-		writeScreen();
-		delay(delaytime);
-	}
+	//writeScreen();
+	//delay(delaytime);
+	//for (int i = 0; i < 24; i++) {
+	//	char ci[2];
+	//	memset(buf, 0x0, 64);
+	//	putSprite(i, 9, 4, 5, A);
+	//	itoa(i, ci, 10);
+	//	putChar(i, 0, 'a');
+	//	writeScreen();
+	//	delay(delaytime);
+	//}
+	//putChar(0, 0, 'a');
+	//writeScreen();
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {
+	int rowcount = 0;
 	Serial.print("Message arrived [");
 	Serial.print(topic);
-	Serial.print("] ");
-	if (strcmp(topic, "uselessBox") == 0){
-		for (int i = 0; i < length; i++) {
-			putChar(i * 6, 0, payload[i]);
-		}
-	}
-
+	Serial.print("]");	
 	for (int i = 0; i < length; i++) {
 		char receivedChar = (char)payload[i];
 		Serial.print(receivedChar);
-		Serial.println();
 	}
+		Serial.println();
+
+	if (strcmp(topic, "uselessBox") == 0){
+		memset(buf, 0, 32);
+		for (int i = 0; i < length; i++) {
+
+			Serial.print(i);
+			putChar(rowcount, 0, payload[i]);
+			rowcount += arial_8ptDescriptors[int(payload[i]) - 33][0] + 1;
+		}			
+	writeScreen();
+	}
+
+
 }
 
 void wakeMAX72XX(){
@@ -135,20 +145,20 @@ void putSprite(int x, int y, int width, int height, int sp) {
 // This function works for a single sprite so far WIP
 void putChar(int x, int y, char sp) {
 	int charNo = int(sp) - 32;  // starting point from ascii array
-	//Serial.print("CharNo: ");
-	//Serial.println(charNo, DEC);
-
 	int width = arial_8ptDescriptors[charNo - 1][0];
-	//Serial.print("Width: ");
-	//Serial.println(width, DEC);
-
 	int arrayPos = arial_8ptDescriptors[charNo - 1][1];
 	//Serial.print("Array pos: ");
 	//Serial.println(arrayPos, DEC);
 
 	for (int i = 0; i < 8; i++) {  // add 8 lines into the buffer
-		if (width == 1){
-			buf[i + y] ^= (uint32_t(arial_8ptBitmaps[arrayPos + i])) << (23 - x - width);
+		if (width < 9){
+			if (16 - x >= 0){
+				buf[i + y] ^= arial_8ptBitmaps[arrayPos + i] << (16 - x);
+			}
+			else {
+				buf[i + y] ^= arial_8ptBitmaps[arrayPos + i] >> (x - 16);
+			}
+
 		}
 	}
 }
