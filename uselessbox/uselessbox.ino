@@ -37,6 +37,11 @@ const int motorAPWM = 15;
 const int motorB = 11;
 const int switchPin = 9;
 
+char insideTemp[5];
+char outsideTemp[5];
+char insideHumidity[5];
+char outsideHumidiy[5];
+
 
 void setup() {
 	Serial.begin(921600);
