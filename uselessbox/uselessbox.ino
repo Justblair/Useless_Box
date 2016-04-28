@@ -18,7 +18,7 @@ enum characters { A, r, d, u, i, n, o };
 /*
  Now we need a LedControl to work with.
  ***** These pin numbers will probably not work with your hardware *****
- pin 13 (D7 on Wemos) (yellow wire)	is connected to the DataIn 
+ pin 13 (D7 on Wemos) (yellow wire)	is connected to the DataIn
  pin 14 (D5 on Wemos) (green wire)	is connected to the CLK
  pin 12 (D6 on Wemos) (orange wire)	is connected to LOAD
  We have 6 MAX72XX.
@@ -57,7 +57,7 @@ void setup() {
 }
 
 
-void switchChange(){
+void switchChange() {
 	// do switchy stuff here
 
 }
@@ -86,27 +86,45 @@ void callback(char* topic, byte* payload, unsigned int length) {
 	int rowcount = 0;
 	Serial.print("Message arrived [");
 	Serial.print(topic);
-	Serial.print("]");	
+	Serial.print("]");
 	for (int i = 0; i < length; i++) {
 		char receivedChar = (char)payload[i];
 		Serial.print(receivedChar);
 	}
-		Serial.println();
+	Serial.println();
 
-	if (strcmp(topic, "/uselessBox/timeString") == 0){
-		memset(buf, 0, 32);
+	if (strcmp(topic, "/uselessBox/timeString") == 0) {
+		memset(buf, 0, 64);
 		for (int i = 0; i < length; i++) {
 			Serial.print(i);
-			putChar(rowcount + 2, 0, payload[i]);
+			putChar(rowcount + 2, 8, payload[i]);
 			rowcount += arial_8ptDescriptors[int(payload[i]) - 33][0] + 1;
-		}			
-	writeScreen();
+		}
+		rowcount = 0;
+		for (int i = 0; i < 4; i++) {
+			Serial.print(i);
+			putChar(rowcount + 2, 0, outsideTemp[i]);
+			rowcount += arial_8ptDescriptors[int(outsideTemp[i]) - 33][0] + 1;
+		}
+		writeScreen();
+	} else 
+		
+	if (strcmp(topic, "/uselessBox/owmTemperature") == 0) {
+		Serial.print("Temperature: ");
+		for (int i = 0; i < 3; i++) {
+			outsideTemp[i] = payload[i];
+		}
+		outsideTemp[3] = 'c';
+		for (int i = 0; i < length; i++) {
+			char receivedChar = outsideTemp[i];
+			Serial.print(receivedChar);
+		}
 	}
 
 
 }
 
-void wakeMAX72XX(){
+void wakeMAX72XX() {
 	/*
 	 The MAX72XX is in power-saving mode on startup,
 	 we have to do a wakeup call
@@ -155,8 +173,8 @@ void putChar(int x, int y, char sp) {
 	//Serial.println(arrayPos, DEC);
 
 	for (int i = 0; i < 8; i++) {  // add 8 lines into the buffer
-		if (width < 9){
-			if (16 - x >= 0){
+		if (width < 9) {
+			if (16 - x >= 0) {
 				buf[i + y] ^= arial_8ptBitmaps[arrayPos + i] << (16 - x);
 			}
 			else {
@@ -187,6 +205,7 @@ void reconnect() {
 		if (client.connect("ESP8266Client", mqtt_user, mqtt_password)) {
 			Serial.println("connected");
 			client.subscribe("/uselessBox/timeString");
+			client.subscribe("/uselessBox/owmTemperature");
 		}
 		else {
 			Serial.print("failed, rc=");

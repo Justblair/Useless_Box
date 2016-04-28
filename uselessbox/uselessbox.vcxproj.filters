@@ -14,4 +14,18 @@
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="ascii_4x5.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="passwords.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="__vm\.uselessbox.vsarduino.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="uselessbox.ino" />
+  </ItemGroup>
 </Project>
