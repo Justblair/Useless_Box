@@ -39,7 +39,7 @@ const int switchPin = 9;
 
 
 void setup() {
-	Serial.begin(9600);
+	Serial.begin(921600);
 	Serial.println("Hello");
 	wakeMAX72XX();
 	setup_wifi();
@@ -88,12 +88,11 @@ void callback(char* topic, byte* payload, unsigned int length) {
 	}
 		Serial.println();
 
-	if (strcmp(topic, "uselessBox") == 0){
+	if (strcmp(topic, "/uselessBox/timeString") == 0){
 		memset(buf, 0, 32);
 		for (int i = 0; i < length; i++) {
-
 			Serial.print(i);
-			putChar(rowcount, 0, payload[i]);
+			putChar(rowcount + 2, 0, payload[i]);
 			rowcount += arial_8ptDescriptors[int(payload[i]) - 33][0] + 1;
 		}			
 	writeScreen();
@@ -182,7 +181,7 @@ void reconnect() {
 		// if (client.connect("ESP8266Client")) {
 		if (client.connect("ESP8266Client", mqtt_user, mqtt_password)) {
 			Serial.println("connected");
-			client.subscribe("uselessBox");
+			client.subscribe("/uselessBox/timeString");
 		}
 		else {
 			Serial.print("failed, rc=");

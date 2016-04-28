@@ -282,3 +282,10 @@ $RECYCLE.BIN/
 
 # Windows shortcuts
 *.lnk
+*.sln
+uselessbox/uselessbox.vcxproj
+*.filters
+uselessbox/__vm/.uselessbox.vsarduino.h
+*.xml
+uselessbox/__vm/Upload.vmps.xml
+*.xml
