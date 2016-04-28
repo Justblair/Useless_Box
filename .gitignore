@@ -289,3 +289,8 @@ uselessbox/__vm/.uselessbox.vsarduino.h
 *.xml
 uselessbox/__vm/Upload.vmps.xml
 *.xml
+*.vcxproj
+uselessbox/uselessbox.vcxproj.filters
+uselessbox/__vm/.uselessbox.vsarduino.h
+*.xml
+uselessbox/__vm/Configuration.Debug.vmps.xml
