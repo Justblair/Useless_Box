@@ -14,18 +14,26 @@
 //#define mqtt_user ""
 //#define mqtt_password ""
 
+// MQQT Defines
 #define humidity_topic "btsensor/humidity"
 #define temperature_topic "btsensor/temperature"
 #define heatIndex_topic	"btsensor/heatindex"
 
+#define openhab_temp "/uselessBox/owmTemperature"
+#define openhab_time "/uselessBox/timeString"
+
+
 #define DHTTYPE DHT11   // DHT 11
 #define DHTPIN D4     // what pin we're connected to
 
-#define onoff D3
+#define onoff D3  // We will attach the switch to the top of this...
 
 enum characters { A, r, d, u, i, n, o };
 
 DHT dht(DHTPIN, DHTTYPE);
+
+bool lastSwitchState; // we wil use this for debouncing
+unsigned long switchtime; // also used to debounce the switch
 
 long lastMsg = 0;
 float temp = 0.0;
@@ -51,9 +59,10 @@ uint32_t buf[16];
 WiFiClient espClient;
 PubSubClient client(espClient);
 
-const int motorAPWM = 15;
-const int motorB = 11;
-const int switchPin = 9;
+const int motorA = D0;
+const int motorB = D8;
+const int topSwitch = D2;
+const int botSwitch = D1;
 
 char insideTemp[5];
 char outsideTemp[5];
@@ -64,22 +73,24 @@ char outsideHumidiy[5];
 void setup() {
 	Serial.begin(921600);
 	Serial.println("Hello");
+
 	wakeMAX72XX();
+
 	setup_wifi();
 	client.setServer(mqtt_server, 1883);
 	client.setCallback(callback);
-	//pinMode(motorAPWM, OUTPUT);
-	//pinMode(motorB, OUTPUT);
-	//pinMode(switchPin, INPUT_PULLUP);
-	//attachInterrupt(switchPin, switchChange, CHANGE);
+
 	dht.begin();
+
+
+	// Set pins for the useless box action
+	pinMode(topSwitch, INPUT_PULLUP); // to simplify the circuit, means I can connect straight to the switch
+	pinMode(botSwitch, INPUT_PULLUP); // to simplify the circuit, means I can connect straight to the switch	
+	pinMode(motorA, OUTPUT);
+	pinMode(motorB, OUTPUT);
 }
 
 
-void switchChange() {
-	// do switchy stuff here
-
-}
 
 void loop() {
 	if (!client.connected()) {
@@ -91,8 +102,33 @@ void loop() {
 		readDHT();
 		oldTime = millis();
 	}
+	if (digitalRead(topSwitch)) {  // Top switch is on
+		openBox(255);
+		lastSwitchState = HIGH;
+		// delay(switchtime); // small delay to debounce the switch
+	}
+	else if (!digitalRead(topSwitch) && !digitalRead(botSwitch)) {
+		closeBox(255);
+	}
+	else {
+		motorsOff();
+		lastSwitchState = LOW;
+	}
+}
 
+void openBox(int armSpeed) {
+	analogWrite(motorA, armSpeed);
+	digitalWrite(motorB, LOW);
+}
 
+void closeBox(int armSpeed = 255) {
+	analogWrite(motorB, armSpeed);
+	digitalWrite(motorA, LOW);
+}
+
+void motorsOff() {
+	digitalWrite(motorA, LOW);
+	digitalWrite(motorB, LOW);
 }
 
 void readDHT() {
@@ -140,7 +176,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
 	}
 	Serial.println();
 
-	if (strcmp(topic, "/uselessBox/timeString") == 0) {
+	if (strcmp(topic, openhab_time) == 0) {
 		memset(buf, 0, 64);
 		for (int i = 0; i < length; i++) {
 			Serial.print(i);
@@ -157,7 +193,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
 	}
 	else
 
-		if (strcmp(topic, "/uselessBox/owmTemperature") == 0) {
+		if (strcmp(topic, openhab_temp) == 0) {
 			Serial.print("Temperature: ");
 			for (int i = 0; i < 3; i++) {
 				outsideTemp[i] = payload[i];
@@ -252,8 +288,8 @@ void reconnect() {
 		// if (client.connect("ESP8266Client")) {
 		if (client.connect("ESP8266Client", mqtt_user, mqtt_password)) {
 			Serial.println("connected");
-			client.subscribe("/uselessBox/timeString");
-			client.subscribe("/uselessBox/owmTemperature");
+			client.subscribe(openhab_time);
+			client.subscribe(openhab_temp);
 		}
 		else {
 			Serial.print("failed, rc=");
