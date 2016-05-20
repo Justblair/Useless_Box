@@ -21,6 +21,8 @@
 #define DHTTYPE DHT11   // DHT 11
 #define DHTPIN D4     // what pin we're connected to
 
+#define onoff D3
+
 enum characters { A, r, d, u, i, n, o };
 
 DHT dht(DHTPIN, DHTTYPE);
@@ -84,77 +86,47 @@ void loop() {
 		reconnect();
 	}
 	client.loop();
-	//writeScreen();
-	//delay(delaytime);
-	//for (int i = 0; i < 24; i++) {
-	//	char ci[2];
-	//	memset(buf, 0x0, 64);
-	//	putSprite(i, 9, 4, 5, A);
-	//	itoa(i, ci, 10);
-	//	putChar(i, 0, 'a');
-	//	writeScreen();
-	//	delay(delaytime);
-	//}
-	//putChar(0, 0, 'a');
-	//writeScreen();
 
-	if (oldTime + 60000 < millis()) {
-		// Reading temperature or humidity takes about 250 milliseconds!
-		// Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
-		float h = dht.readHumidity();
-		// Read temperature as Celsius (the default)
-		float t = dht.readTemperature();
-		// Read temperature as Fahrenheit (isFahrenheit = true)
-		float f = dht.readTemperature(true);
-
-		// Check if any reads failed and exit early (to try again).
-		if (isnan(h) || isnan(t) || isnan(f)) {
-			Serial.println("Failed to read from DHT sensor!");
-			return;
-		}
-
-
-		// Compute heat index in Fahrenheit (the default)
-		float hif = dht.computeHeatIndex(f, h);
-		// Compute heat index in Celsius (isFahreheit = false)
-		float hic = dht.computeHeatIndex(t, h, false);
-		client.publish(heatIndex_topic, String(hic).c_str(), true);
-
-		//if (checkBound(t, temp, diff)) {
-		temp = t;
-		Serial.print("New temperature:");
-		Serial.println(String(temp).c_str());
-		client.publish(temperature_topic, String(temp).c_str(), true);
-		//}
-
-		//		if (checkBound(h, hum, diff)) {
-		hum = h;
-		Serial.print("New humidity:");
-		Serial.println(String(hum).c_str());
-		client.publish(humidity_topic, String(hum).c_str(), true);
-
-		//	}
-		//client.publish(humidity_topic, "Hello");
-		Serial.print("Humidity: ");
-		Serial.print(h);
-		Serial.print(" %\t");
-		Serial.print("Temperature: ");
-		Serial.print(t);
-		Serial.print(" *C ");
-		Serial.print(f);
-		Serial.print(" *F\t");
-		Serial.print("Heat index: ");
-		Serial.print(hic);
-		Serial.print(" *C ");
-		Serial.print(hif);
-		Serial.println(" *F");
-
-		// Wait a few seconds between measurements.
-		//		delay(2000);
+	if (oldTime + 60000 < millis()) {  // wait 1 minute between readings
+		readDHT();
 		oldTime = millis();
-
 	}
 
+
+}
+
+void readDHT() {
+	// Reading temperature or humidity takes about 250 milliseconds!
+	// Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
+	float h = dht.readHumidity();
+	// Read temperature as Celsius (the default)
+	float t = dht.readTemperature();
+	// Read temperature as Fahrenheit (isFahrenheit = true)
+	float f = dht.readTemperature(true);
+
+	// Check if any reads failed and exit early (to try again).
+	if (isnan(h) || isnan(t) || isnan(f)) {
+		Serial.println("Failed to read from DHT sensor!");
+		return;
+	}
+
+	// Compute heat index in Fahrenheit (the default)
+	// float hif = dht.computeHeatIndex(f, h);
+	// Compute heat index in Celsius (isFahreheit = false)
+	float hic = dht.computeHeatIndex(t, h, false);
+	client.publish(heatIndex_topic, String(hic).c_str(), true);
+
+	//if (checkBound(t, temp, diff)) {
+	temp = t;
+	Serial.print("New temperature:");
+	Serial.println(String(temp).c_str());
+	client.publish(temperature_topic, String(temp).c_str(), true);
+	//}
+
+	hum = h;
+	Serial.print("New humidity:");
+	Serial.println(String(hum).c_str());
+	client.publish(humidity_topic, String(hum).c_str(), true);
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {
