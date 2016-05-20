@@ -1,4 +1,5 @@
 //We always have to include the library
+#include "DHT.h"
 #include "LedControl.h"
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
@@ -6,15 +7,30 @@
 #include "passwords.h"
 
 // Stored in passwords.h
-//#define wifi_ssid "YOUR WIFI SSID"
-//#define wifi_password "WIFI PASSWORD"
+//#define wifi_ssid "ELECTRON-CLUB"
+//#define wifi_password ""
 //
-//#define mqtt_server "192.168.0.23"
+//#define mqtt_server "81.108.97.190"
 //#define mqtt_user ""
 //#define mqtt_password ""
 
+#define humidity_topic "btsensor/humidity"
+#define temperature_topic "btsensor/temperature"
+#define heatIndex_topic	"btsensor/heatindex"
+
+#define DHTTYPE DHT11   // DHT 11
+#define DHTPIN D4     // what pin we're connected to
+
 enum characters { A, r, d, u, i, n, o };
 
+DHT dht(DHTPIN, DHTTYPE);
+
+long lastMsg = 0;
+float temp = 0.0;
+float hum = 0.0;
+float diff = 0.2;
+
+unsigned long oldTime;
 /*
  Now we need a LedControl to work with.
  ***** These pin numbers will probably not work with your hardware *****
@@ -24,7 +40,7 @@ enum characters { A, r, d, u, i, n, o };
  We have 6 MAX72XX.
  */
 
-LedControl lc = LedControl(13, 14, 12, 6);
+LedControl lc = LedControl(D7, D5, D6, 6);
 
 /* we always wait a bit between updates of the display */
 unsigned long delaytime = 100;
@@ -54,6 +70,7 @@ void setup() {
 	//pinMode(motorB, OUTPUT);
 	//pinMode(switchPin, INPUT_PULLUP);
 	//attachInterrupt(switchPin, switchChange, CHANGE);
+	dht.begin();
 }
 
 
@@ -80,6 +97,64 @@ void loop() {
 	//}
 	//putChar(0, 0, 'a');
 	//writeScreen();
+
+	if (oldTime + 60000 < millis()) {
+		// Reading temperature or humidity takes about 250 milliseconds!
+		// Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
+		float h = dht.readHumidity();
+		// Read temperature as Celsius (the default)
+		float t = dht.readTemperature();
+		// Read temperature as Fahrenheit (isFahrenheit = true)
+		float f = dht.readTemperature(true);
+
+		// Check if any reads failed and exit early (to try again).
+		if (isnan(h) || isnan(t) || isnan(f)) {
+			Serial.println("Failed to read from DHT sensor!");
+			return;
+		}
+
+
+		// Compute heat index in Fahrenheit (the default)
+		float hif = dht.computeHeatIndex(f, h);
+		// Compute heat index in Celsius (isFahreheit = false)
+		float hic = dht.computeHeatIndex(t, h, false);
+		client.publish(heatIndex_topic, String(hic).c_str(), true);
+
+		//if (checkBound(t, temp, diff)) {
+		temp = t;
+		Serial.print("New temperature:");
+		Serial.println(String(temp).c_str());
+		client.publish(temperature_topic, String(temp).c_str(), true);
+		//}
+
+		//		if (checkBound(h, hum, diff)) {
+		hum = h;
+		Serial.print("New humidity:");
+		Serial.println(String(hum).c_str());
+		client.publish(humidity_topic, String(hum).c_str(), true);
+
+		//	}
+		//client.publish(humidity_topic, "Hello");
+		Serial.print("Humidity: ");
+		Serial.print(h);
+		Serial.print(" %\t");
+		Serial.print("Temperature: ");
+		Serial.print(t);
+		Serial.print(" *C ");
+		Serial.print(f);
+		Serial.print(" *F\t");
+		Serial.print("Heat index: ");
+		Serial.print(hic);
+		Serial.print(" *C ");
+		Serial.print(hif);
+		Serial.println(" *F");
+
+		// Wait a few seconds between measurements.
+		//		delay(2000);
+		oldTime = millis();
+
+	}
+
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {
@@ -107,19 +182,20 @@ void callback(char* topic, byte* payload, unsigned int length) {
 			rowcount += arial_8ptDescriptors[int(outsideTemp[i]) - 33][0] + 1;
 		}
 		writeScreen();
-	} else 
-		
-	if (strcmp(topic, "/uselessBox/owmTemperature") == 0) {
-		Serial.print("Temperature: ");
-		for (int i = 0; i < 3; i++) {
-			outsideTemp[i] = payload[i];
-		}
-		outsideTemp[3] = 'c';
-		for (int i = 0; i < length; i++) {
-			char receivedChar = outsideTemp[i];
-			Serial.print(receivedChar);
-		}
 	}
+	else
+
+		if (strcmp(topic, "/uselessBox/owmTemperature") == 0) {
+			Serial.print("Temperature: ");
+			for (int i = 0; i < 3; i++) {
+				outsideTemp[i] = payload[i];
+			}
+			outsideTemp[3] = 'c';
+			for (int i = 0; i < length; i++) {
+				char receivedChar = outsideTemp[i];
+				Serial.print(receivedChar);
+			}
+		}
 
 
 }
