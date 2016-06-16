@@ -1,16 +1,16 @@
-totalWidth 			= 	29	;
-totalHeight 		= 	20	;
+totalWidth 			= 	40	;
+totalHeight 		= 	30	;
 materialThickness	=	2.5	;
 slotThickness		=	3	;
 
-slotNo = 4;
+slotNo = 6;
 
 
-
+%cube ([totalWidth,totalHeight, slotThickness]);
 //dimensions();
 $fn = 60;
 
-translate ([(totalWidth - 8 * slotThickness),materialThickness,0])
+translate ([(slotThickness*slotNo*2)/slotNo - slotThickness/2, materialThickness + .5,0])
 	slot();
 
 module dimensions(){
@@ -22,7 +22,7 @@ module slot(){
 		translate ([i*slotThickness*2,0,0]){
 			hull(){
 				cylinder (r=slotThickness/2, h = materialThickness);
-				translate ([0,totalHeight - materialThickness - slotThickness/2,0])
+				translate ([0,totalHeight - materialThickness - slotThickness/2 - 1, 0])
 					cylinder (r=slotThickness/2, h = materialThickness);
 			}
 		}
