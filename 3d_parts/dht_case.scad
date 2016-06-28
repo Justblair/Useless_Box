@@ -19,10 +19,10 @@ difference(){
 module walls(){
     difference(){
         cube([wall_width,wall_height, wall_depth]);
-        translate([-wall_thickness,wall_thickness,wall_thickness])
-            cube([wall_width,wall_height, wall_depth]);
+        translate([wall_thickness,wall_thickness,wall_thickness])
+            #cube([wall_width,wall_height, wall_depth]);
 		translate([0,wall_depth - 5,wall_depth - 1.6])
-			cube ([50,6.5,10]);
+			#cube ([50,6.5,10]);
     }
     
 }
