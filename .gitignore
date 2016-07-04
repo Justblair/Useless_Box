@@ -301,3 +301,6 @@ uselessbox/uselessbox.vcxproj.filters
 uselessbox/__vm/Compile.vmps.xml
 *.xml
 uselessbox/__vm/Configuration.Debug.vmps.xml
+uselessbox/uselessbox.vcxproj
+*.filters
+uselessbox/__vm/.uselessbox.vsarduino.h
