@@ -19,21 +19,24 @@
 #define temperature_topic "btsensor/temperature"
 #define heatIndex_topic	"btsensor/heatindex"
 
-#define openhab_temp "/uselessBox/owmTemperature"
+#define openhab_temp "/uselessBox/OutTemp"
 #define openhab_time "/uselessBox/timeString"
+#define openhab_command "/uselessBox/warn"
 
 
-#define DHTTYPE DHT11   // DHT 11
+#define DHTTYPE DHT22   // DHT 11
 #define DHTPIN D4     // what pin we're connected to
 
-#define onoff D3  // We will attach the switch to the top of this...
+//#define onoff D3  // We will attach the switch to the top of this...
 
 enum characters { A, r, d, u, i, n, o };
 
 DHT dht(DHTPIN, DHTTYPE);
 
 bool lastSwitchState; // we wil use this for debouncing
-unsigned long switchtime; // also used to debounce the switch
+unsigned long switchtime = 100; // also used to debounce the switch
+unsigned long lastSwitchMillis;
+byte motorState = 0; // 0=off, 1=opening, 2=closing
 
 long lastMsg = 0;
 float temp = 0.0;
@@ -59,10 +62,14 @@ uint32_t buf[16];
 WiFiClient espClient;
 PubSubClient client(espClient);
 
+const char http_site[] = "192.168.0.23";
+const int http_port = 8080;
+
+
 const int motorA = D0;
 const int motorB = D8;
-const int topSwitch = D2;
-const int botSwitch = D1;
+const int topSwitch = D1;
+const int botSwitch = D2;
 
 char insideTemp[5];
 char outsideTemp[5];
@@ -71,7 +78,7 @@ char outsideHumidiy[5];
 
 
 void setup() {
-	Serial.begin(921600);
+	Serial.begin(115200);
 	Serial.println("Hello");
 
 	wakeMAX72XX();
@@ -81,7 +88,6 @@ void setup() {
 	client.setCallback(callback);
 
 	dht.begin();
-
 
 	// Set pins for the useless box action
 	pinMode(topSwitch, INPUT_PULLUP); // to simplify the circuit, means I can connect straight to the switch
@@ -102,33 +108,59 @@ void loop() {
 		readDHT();
 		oldTime = millis();
 	}
-	if (digitalRead(topSwitch)) {  // Top switch is on
-		openBox(255);
-		lastSwitchState = HIGH;
-		// delay(switchtime); // small delay to debounce the switch
+
+	// Traditional Useless box functions...
+
+	// If the top switch is on for any reason, we need to think about closing it
+	if (digitalRead(topSwitch) && motorState != 1) {  // Top switch is on
+		openBox(random(500, 800));  // Open the box, not too quick though
+		//openBox(450);
+		if (millis() - lastSwitchMillis < 1500) {
+			// switch has been fast toggled, activate new mode
+			Serial.println("New Mode");
+
+		}
+		lastSwitchMillis = millis();
+		delay(switchtime); // small delay to debounce the switch
+		Serial.print(motorState, DEC);
+		Serial.println(" : Open");
+		motorState = 1;
 	}
-	else if (!digitalRead(topSwitch) && !digitalRead(botSwitch)) {
-		closeBox(255);
+
+
+	// If the top switch is off and the bottom switch is off 
+	// Then the finger has just pressed the button and needs to go home
+	else if (!digitalRead(topSwitch) && !digitalRead(botSwitch) && motorState != 2) {
+		closeBox(1023);
+		delay(switchtime); // small delay to debounce the switch
+		Serial.print(motorState, DEC);
+		Serial.println(" : Close");
+		motorState = 2;
 	}
-	else {
+
+	// If not the top two, then we need to switch the motors off
+	else if (!digitalRead(topSwitch) && digitalRead(botSwitch) && motorState != 0) {
 		motorsOff();
+		delay(switchtime); // small delay to debounce the switch
 		lastSwitchState = LOW;
+		motorState = 0;
 	}
 }
+
 
 void openBox(int armSpeed) {
 	analogWrite(motorA, armSpeed);
-	digitalWrite(motorB, LOW);
+	analogWrite(motorB, 0);
 }
 
-void closeBox(int armSpeed = 255) {
+void closeBox(int armSpeed) {
+	analogWrite(motorA, 0);
 	analogWrite(motorB, armSpeed);
-	digitalWrite(motorA, LOW);
 }
 
 void motorsOff() {
-	digitalWrite(motorA, LOW);
-	digitalWrite(motorB, LOW);
+	analogWrite(motorA, 0);
+	analogWrite(motorB, 0);
 }
 
 void readDHT() {
@@ -165,6 +197,7 @@ void readDHT() {
 	client.publish(humidity_topic, String(hum).c_str(), true);
 }
 
+// This is where the MQTT commands are recieved and executed
 void callback(char* topic, byte* payload, unsigned int length) {
 	int rowcount = 0;
 	Serial.print("Message arrived [");
@@ -177,38 +210,41 @@ void callback(char* topic, byte* payload, unsigned int length) {
 	Serial.println();
 
 	if (strcmp(topic, openhab_time) == 0) {
-		memset(buf, 0, 64);
+		memset(buf, 0, 64);  // Clear the buffer of characters quickly
 		for (int i = 0; i < length; i++) {
-			Serial.print(i);
+			//Serial.print(i);
 			putChar(rowcount + 2, 8, payload[i]);
 			rowcount += arial_8ptDescriptors[int(payload[i]) - 33][0] + 1;
 		}
 		rowcount = 0;
 		for (int i = 0; i < 4; i++) {
-			Serial.print(i);
+			//Serial.print(i);
 			putChar(rowcount + 2, 0, outsideTemp[i]);
 			rowcount += arial_8ptDescriptors[int(outsideTemp[i]) - 33][0] + 1;
 		}
 		writeScreen();
 	}
-	else
-
-		if (strcmp(topic, openhab_temp) == 0) {
-			Serial.print("Temperature: ");
-			for (int i = 0; i < 3; i++) {
-				outsideTemp[i] = payload[i];
-			}
-			outsideTemp[3] = 'c';
-			for (int i = 0; i < length; i++) {
-				char receivedChar = outsideTemp[i];
-				Serial.print(receivedChar);
-			}
+	else if (strcmp(topic, openhab_temp) == 0) {
+		Serial.print("Temperature: ");
+		for (int i = 0; i < 3; i++) {
+			outsideTemp[i] = payload[i];
 		}
 
+		outsideTemp[3] = 'c';
 
+		for (int i = 0; i < length; i++) {
+			char receivedChar = outsideTemp[i];
+			Serial.print(receivedChar);
+		}
+	}
+	else if (strcmp(topic, openhab_command) == 0) {
+		Serial.println("command");
+		openBox(800);
+		delay(1000);
+	}
 }
 
-void wakeMAX72XX() {
+  void wakeMAX72XX() {
 	/*
 	 The MAX72XX is in power-saving mode on startup,
 	 we have to do a wakeup call
@@ -248,7 +284,7 @@ void putSprite(int x, int y, int width, int height, int sp) {
 	}
 }
 
-// This function works for a single sprite so far WIP
+// Place a character into the display buffer 
 void putChar(int x, int y, char sp) {
 	int charNo = int(sp) - 32;  // starting point from ascii array
 	int width = arial_8ptDescriptors[charNo - 1][0];
@@ -290,6 +326,7 @@ void reconnect() {
 			Serial.println("connected");
 			client.subscribe(openhab_time);
 			client.subscribe(openhab_temp);
+			client.subscribe(openhab_command);
 		}
 		else {
 			Serial.print("failed, rc=");
