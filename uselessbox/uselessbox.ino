@@ -115,9 +115,10 @@ void loop() {
 	if (digitalRead(topSwitch) && motorState != 1) {  // Top switch is on
 		openBox(random(500, 800));  // Open the box, not too quick though
 		//openBox(450);
-		if (millis() - lastSwitchMillis < 1500) {
+		if (millis() - lastSwitchMillis < 2000) {
 			// switch has been fast toggled, activate new mode
 			Serial.println("New Mode");
+			client.publish("uselessBox/send" ,"1");
 
 		}
 		lastSwitchMillis = millis();
@@ -134,8 +135,9 @@ void loop() {
 		closeBox(1023);
 		delay(switchtime); // small delay to debounce the switch
 		Serial.print(motorState, DEC);
-		Serial.println(" : Close");
+		Serial.print(" : Close : ");
 		motorState = 2;
+		Serial.println(millis() - lastSwitchMillis, DEC);
 	}
 
 	// If not the top two, then we need to switch the motors off
@@ -144,6 +146,8 @@ void loop() {
 		delay(switchtime); // small delay to debounce the switch
 		lastSwitchState = LOW;
 		motorState = 0;
+		Serial.print("total : ");
+		Serial.println(millis() - lastSwitchMillis, DEC);
 	}
 }
 
